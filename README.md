@@ -103,6 +103,94 @@ Add to your Claude Desktop configuration file:
 
 Once configured, the MCP server provides four main tools:
 
+## Getting Started
+
+This MCP server lets you query Plausible Analytics for any site you own, directly from VS Code, Claude Desktop, or any MCP-compatible client. You can:
+- Get traffic, engagement, and conversion stats for your site
+- Break down analytics by page, device, country, source, and more
+- Run advanced filters and time-based queries
+- Automate reporting and SEO analysis
+
+### Quick Setup
+1. Get your Plausible API key from https://plausible.io/settings/api-keys
+2. Set up your `.env` file or VS Code/Claude config (see below)
+3. Start the MCP server:
+   ```bash
+   node build/index.js
+   ```
+4. Connect with your MCP client and start querying!
+
+## Example Queries
+
+### Get traffic stats for your site
+```json
+{
+  "site_id": "alexop.dev",
+  "metrics": ["visitors", "pageviews", "bounce_rate"],
+  "date_range": "30d"
+}
+```
+
+### See top countries and devices
+```json
+{
+  "site_id": "alexop.dev",
+  "metrics": ["visitors"],
+  "date_range": "30d",
+  "dimensions": ["visit:country_name", "visit:device"]
+}
+```
+
+### Analyze traffic sources and campaigns
+```json
+{
+  "site_id": "alexop.dev",
+  "metrics": ["visitors"],
+  "date_range": "30d",
+  "dimensions": ["visit:source", "visit:utm_campaign"]
+}
+```
+
+### Get hourly traffic trends
+```json
+{
+  "site_id": "alexop.dev",
+  "metrics": ["pageviews"],
+  "date_range": "7d",
+  "dimensions": ["time:hour"]
+}
+```
+
+### Conversion rate by source (if goals set)
+```json
+{
+  "site_id": "alexop.dev",
+  "metrics": ["conversion_rate"],
+  "date_range": "30d",
+  "dimensions": ["visit:source"]
+}
+```
+
+### Scroll depth per page
+```json
+{
+  "site_id": "alexop.dev",
+  "metrics": ["scroll_depth"],
+  "date_range": "30d",
+  "dimensions": ["event:page"]
+}
+```
+
+## What insights can you get?
+- Top pages, landing and exit pages
+- Device, browser, and OS breakdowns
+- Geographic breakdowns (country, region, city)
+- Traffic sources and UTM campaign performance
+- Conversion rates and custom event tracking
+- Scroll depth and time on page
+- Hourly/daily/weekly/monthly traffic trends
+- Advanced filters and segments
+
 ### 1. plausible_query
 Full-featured querying with all Plausible API capabilities:
 
