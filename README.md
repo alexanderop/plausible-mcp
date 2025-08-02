@@ -1,104 +1,325 @@
-# MCP Server Starter
+# Plausible Analytics MCP Server
 
-A minimal TypeScript starter template for building Model Context Protocol (MCP) servers.
-
-## What is MCP?
-
-MCP (Model Context Protocol) enables AI applications to connect with external systems through a standardized protocol. This starter template provides the basic structure to build your own MCP server.
+A Model Context Protocol (MCP) server that provides access to the Plausible Analytics API for querying website statistics and analytics data.
 
 ## Features
 
-This starter includes:
-- TypeScript configuration with strict type checking
-- MCP SDK integration  
-- Basic server setup with stdio transport
-- Example `echo` tool implementation
-- ESLint configuration
-- Build scripts
+- **Full Plausible API Support**: Query historical and real-time stats with filtering and dimensions
+- **Multiple Query Tools**: 
+  - `plausible_query`: Full-featured querying with filters and dimensions
+  - `plausible_aggregate`: Simple aggregate stats
+  - `plausible_breakdown`: Stats broken down by dimensions
+  - `plausible_timeseries`: Time-based data for charts
+- **Robust Error Handling**: Automatic retries, timeout support, and detailed error messages
+- **Connection Testing**: Built-in health check on startup
+- **Comprehensive Logging**: Debug, info, and error logging through MCP
 
-## Quick Start
+## Prerequisites
 
-1. Install dependencies:
+- Node.js 16 or higher
+- A Plausible Analytics account with API access
+- Plausible API key (get from https://plausible.io/settings/api-keys)
+
+## Installation
+
+### From Source
+
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/plausible-mcp.git
+cd plausible-mcp
+
+# Install dependencies
 npm install
-```
 
-2. Build the server:
-```bash
+# Build the TypeScript code
 npm run build
 ```
 
-3. Run the server:
+### From NPM (when published)
+
 ```bash
-node build/index.js
+npm install -g @your-org/mcp-plausible
 ```
 
-## Project Structure
+## Configuration
 
-```
-mcp-server-starter-ts/
-├── src/
-│   └── index.ts      # Main server implementation
-├── build/            # Compiled JavaScript output
-├── package.json      # Dependencies and scripts
-├── tsconfig.json     # TypeScript configuration
-└── eslint.config.mjs # ESLint configuration
-```
+### Environment Variables
 
-## Example Tool
+Create a `.env` file in the project root (see `examples/.env.example`):
 
-The starter includes a simple `echo` tool that demonstrates the basic structure:
+```bash
+# Required
+PLAUSIBLE_API_KEY=your-api-key-here
 
-```typescript
-server.tool(
-  "echo",
-  "Echo back the provided text",
-  {
-    text: z.string().describe("Text to echo back"),
-  },
-  async ({ text }) => {
-    return {
-      content: [
-        {
-          type: "text",
-          text: text,
-        },
-      ],
-    };
-  }
-);
+# Optional
+PLAUSIBLE_API_URL=https://plausible.io  # For self-hosted instances
+PLAUSIBLE_TIMEOUT=30000                 # Request timeout in ms
 ```
 
-## Extending the Server
+### VS Code Integration
 
-To add new capabilities:
-
-1. **Add Tools**: Define new tools using `server.tool()`
-2. **Add Resources**: Provide data using `server.resource()`
-3. **Add Prompts**: Create templates using `server.prompt()`
-
-## Integration
-
-To use this server with an MCP client:
+For VS Code extensions that support MCP (like Cline), add to your settings:
 
 ```json
 {
-  "mcpServers": {
-    "my-server": {
+  "cline.mcpServers": {
+    "plausible": {
       "command": "node",
-      "args": ["/path/to/build/index.js"],
-      "transport": "stdio"
+      "args": ["/absolute/path/to/plausible-mcp/build/index.js"],
+      "env": {
+        "PLAUSIBLE_API_KEY": "${env:PLAUSIBLE_API_KEY}"
+      }
     }
   }
 }
 ```
 
-## Development Scripts
+See `examples/vscode-settings.json` for more configuration examples.
 
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Auto-fix linting issues
+### Claude Desktop Integration
+
+Add to your Claude Desktop configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`  
+**Linux**: `~/.config/claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "plausible": {
+      "command": "node",
+      "args": ["/absolute/path/to/plausible-mcp/build/index.js"],
+      "env": {
+        "PLAUSIBLE_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+## Usage
+
+Once configured, the MCP server provides four main tools:
+
+### 1. plausible_query
+Full-featured querying with all Plausible API capabilities:
+
+```json
+{
+  "site_id": "example.com",
+  "metrics": ["visitors", "pageviews", "bounce_rate"],
+  "date_range": "7d",
+  "filters": [
+    ["is", "visit:country_name", ["United States", "Canada"]]
+  ],
+  "dimensions": ["visit:source"],
+  "order_by": [["visitors", "desc"]],
+  "pagination": { "limit": 10 }
+}
+```
+
+### 2. plausible_aggregate
+Simple aggregate stats without dimensions:
+
+```json
+{
+  "site_id": "example.com",
+  "metrics": ["visitors", "pageviews"],
+  "date_range": "month"
+}
+```
+
+### 3. plausible_breakdown
+Stats broken down by dimensions:
+
+```json
+{
+  "site_id": "example.com",
+  "metrics": ["visitors"],
+  "date_range": "7d",
+  "dimensions": ["visit:country_name", "visit:device"],
+  "limit": 20
+}
+```
+
+### 4. plausible_timeseries
+Time-based data for charts:
+
+```json
+{
+  "site_id": "example.com",
+  "metrics": ["visitors", "pageviews"],
+  "date_range": "30d",
+  "interval": "time:day"
+}
+```
+
+## API Reference
+
+### Date Ranges
+- Relative: `"day"`, `"7d"`, `"30d"`, `"month"`, `"6mo"`, `"12mo"`, `"year"`, `"all"`
+- Custom: `["2024-01-01", "2024-01-31"]` (ISO 8601 format)
+
+### Metrics
+- **Traffic**: `visitors`, `visits`, `pageviews`, `views_per_visit`
+- **Engagement**: `bounce_rate`, `visit_duration`, `scroll_depth`
+- **Events**: `events`, `conversion_rate`, `group_conversion_rate`
+- **Revenue**: `average_revenue`, `total_revenue`
+- **Other**: `percentage`, `time_on_page`
+
+### Dimensions
+
+#### Visit Dimensions
+- `visit:source` - Traffic source
+- `visit:referrer` - Referrer URL
+- `visit:utm_medium` - UTM medium
+- `visit:utm_source` - UTM source
+- `visit:utm_campaign` - UTM campaign
+- `visit:utm_content` - UTM content
+- `visit:utm_term` - UTM term
+- `visit:device` - Device type
+- `visit:browser` - Browser name
+- `visit:browser_version` - Browser version
+- `visit:os` - Operating system
+- `visit:os_version` - OS version
+- `visit:country` - Country code
+- `visit:country_name` - Country name
+- `visit:region` - Region code
+- `visit:region_name` - Region name
+- `visit:city` - City code
+- `visit:city_name` - City name
+
+#### Event Dimensions
+- `event:page` - Page path
+- `event:hostname` - Hostname
+- `event:goal` - Goal name
+- `event:props:*` - Custom properties
+
+#### Time Dimensions
+- `time` - Auto-detected
+- `time:hour` - Hourly
+- `time:day` - Daily
+- `time:week` - Weekly
+- `time:month` - Monthly
+
+### Filters
+
+#### Simple Filters
+```json
+["is", "visit:country", ["US", "CA"]]
+["contains", "event:page", ["/blog/"]]
+["matches", "visit:source", ["google.*"]]
+```
+
+#### Logical Filters
+```json
+["and", [
+  ["is", "visit:device", ["Mobile"]],
+  ["is", "visit:country", ["US"]]
+]]
+
+["or", [
+  ["is", "visit:source", ["google"]],
+  ["is", "visit:source", ["bing"]]
+]]
+
+["not", ["is", "visit:country", ["US"]]]
+```
+
+#### Behavioral Filters
+```json
+["has_done", ["is", "event:goal", ["Signup"]]]
+["has_not_done", ["is", "event:goal", ["Purchase"]]]
+```
+
+## Advanced Features
+
+### Error Handling
+- **Automatic Retries**: Failed requests are retried up to 3 times with exponential backoff
+- **Rate Limit Handling**: Respects `Retry-After` headers from Plausible API
+- **Timeout Support**: Configurable request timeout (default 30s)
+- **Detailed Error Messages**: Clear error messages with context
+
+### Logging
+The server logs important events:
+- Connection status on startup
+- Tool invocations with parameters
+- Success/failure of queries
+- Detailed error information
+
+To view logs:
+- **Claude Desktop**: `tail -f ~/Library/Logs/Claude/mcp*.log` (macOS)
+- **VS Code**: Check extension output panel
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run TypeScript compiler in watch mode
+npm run build -- --watch
+
+# Run linting
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Type checking
+npm run typecheck
+```
+
+## Troubleshooting
+
+### Connection Issues
+1. Check if API key is set correctly
+2. Verify network connectivity
+3. For self-hosted instances, ensure `PLAUSIBLE_API_URL` is correct
+4. Check logs for detailed error messages
+
+### Rate Limiting
+- Default limit: 600 requests/hour
+- Server automatically retries with backoff
+- Check `Retry-After` header in logs
+
+### Common Errors
+- **"Authentication failed"**: Invalid API key
+- **"Not found"**: Site doesn't exist or you don't have access
+- **"Bad request"**: Check query parameters format
+
+## Security
+
+- Never commit API keys to version control
+- Use environment variables for sensitive data
+- Consider using secret management tools for production
+- All inputs are validated before sending to API
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
 
 ## License
 
-MIT
+MIT - See LICENSE file for details
+
+## Support
+
+- **Plausible API Docs**: https://plausible.io/docs/stats-api
+- **MCP Documentation**: https://modelcontextprotocol.io
+- **Issues**: https://github.com/yourusername/plausible-mcp/issues
+
+## Changelog
+
+### 1.0.0
+- Initial release with full Plausible Stats API support
+- Four specialized tools for different query types
+- Robust error handling and retry logic
+- Comprehensive logging through MCP
+- Connection health check on startup

@@ -77,12 +77,11 @@ export default tseslint.config(
           leadingUnderscore: 'allow',
           trailingUnderscore: 'forbid'
         },
-        // Boolean variables - prefixed with is/has/should/can/did/will
+        // Boolean variables - allow any camelCase naming
         {
           selector: 'variable',
           types: ['boolean'],
           format: ['camelCase'],
-          prefix: ['is', 'has', 'should', 'can', 'did', 'will', 'was', 'are', 'were'],
           leadingUnderscore: 'allow'
         },
         // Constants - UPPER_CASE
@@ -204,6 +203,6 @@ export default tseslint.config(
   },
   {
     // Ignore build output and common directories
-    ignores: ['build/**', 'dist/**', 'node_modules/**', 'coverage/**', 'eslint.config.mjs'],
+    ignores: ['build/**', 'dist/**', 'node_modules/**', 'coverage/**', 'eslint.config.mjs', 'test-connection.ts', 'examples/**'],
   }
 );

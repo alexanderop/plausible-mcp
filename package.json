@@ -1,7 +1,7 @@
 {
-  "name": "mcp-hello-world",
+  "name": "mcp-plausible",
   "version": "1.0.0",
-  "description": "A minimalistic MCP server demonstrating tools, resources, and prompts",
+  "description": "An MCP server that provides access to Plausible Analytics API for querying website statistics",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,13 +9,16 @@
     "build": "tsc && chmod 755 build/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "inspect": "node --inspect ./build/index.js"
   },
   "keywords": [
     "mcp",
-    "hello-world",
-    "example",
-    "tutorial"
+    "plausible",
+    "analytics",
+    "stats",
+    "api",
+    "model-context-protocol"
   ],
   "author": "",
   "license": "MIT",
@@ -33,7 +36,7 @@
     "typescript-eslint": "^8.38.0"
   },
   "bin": {
-    "mcp-hello-world": "./build/index.js"
+    "mcp-plausible": "./build/index.js"
   },
   "files": [
     "build"
