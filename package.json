@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "inspect": "node --inspect ./build/index.js"
+    "inspect": "node --inspect ./build/index.js",
+    "client": "node build/src/client.js build/src/index.js alexop.dev",
+    "client:log": "DEBUG_STDIO=true node build/src/client.js build/src/index.js alexop.dev",
+    "client:nolog": "DEBUG= node build/src/client.js build/src/index.js alexop.dev"
   },
   "keywords": [
     "mcp",
@@ -24,7 +27,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.1",
-    "zod": "^4.0.14"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -36,7 +39,7 @@
     "typescript-eslint": "^8.38.0"
   },
   "bin": {
-    "mcp-plausible": "./build/index.js"
+    "mcp-plausible": "./build/src/index.js"
   },
   "files": [
     "build"

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { inspect } from "util";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -7,6 +9,7 @@ import { z } from "zod";
 const PLAUSIBLE_API_URL =
   process.env.PLAUSIBLE_API_URL ?? "https://plausible.io/api/v2";
 const PLAUSIBLE_API_KEY = process.env.PLAUSIBLE_API_KEY;
+const DEBUG_STDIO = process.env.DEBUG_STDIO === "true";
 
 if (PLAUSIBLE_API_KEY === undefined || PLAUSIBLE_API_KEY === "") {
   throw new Error("PLAUSIBLE_API_KEY environment variable is required");
@@ -565,12 +568,12 @@ EXAMPLES:
   },
   async (params) => {
     // Type assertions for params
-    const siteId = params.site_id as string;
+    const siteId = params.site_id;
     const metrics = params.metrics as Array<string>;
     const dateRange = params.date_range as string | [string, string];
-    const dimensions = params.dimensions as Array<string> | undefined;
-    const filters = params.filters as Array<FilterType> | undefined;
-    const orderBy = params.order_by as Array<[string, "asc" | "desc"]> | undefined;
+    const dimensions = params.dimensions;
+    const filters = params.filters;
+    const orderBy = params.order_by;
     const include = params.include as PlausibleQuery["include"] | undefined;
     const pagination = params.pagination as PlausibleQuery["pagination"] | undefined;
 
@@ -605,10 +608,108 @@ EXAMPLES:
 
 
 
+// Debug logging helper
+function debugLog(category: string, message: string, data?: unknown): void {
+  if (!DEBUG_STDIO) return;
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] [SERVER] [${category}] ${message}`;
+  console.error(logMessage);
+  if (data !== undefined) {
+    console.error("  DATA:", inspect(data, { depth: 3, colors: true }));
+  }
+}
+
 // Main function to start the server
 async function main(): Promise<void> {
+  debugLog("LIFECYCLE", "Starting MCP server", {
+    pid: process.pid,
+    nodeVersion: process.version,
+    debugEnabled: DEBUG_STDIO
+  });
+
   const transport = new StdioServerTransport();
+  
+  // Log transport events if debug is enabled
+  if (DEBUG_STDIO) {
+    debugLog("TRANSPORT", "StdioServerTransport created");
+    
+    // Intercept stdio streams for debugging
+    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+    const originalStdinOn = process.stdin.on.bind(process.stdin);
+    
+    // Log outgoing messages (stdout)
+    process.stdout.write = function(chunk: string | Uint8Array, ...args: Array<unknown>): boolean {
+      const chunkStr = typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
+      debugLog("STDIO", "➡️ Writing to stdout", {
+        preview: chunkStr.substring(0, 500),
+        byteLength: chunk.length
+      });
+      
+      // Try to parse as JSON-RPC
+      try {
+        const lines = chunkStr.split('\n').filter(line => line.trim());
+        for (const line of lines) {
+          if (line.includes('Content-Length:')) {
+            debugLog("PROTOCOL", "Header detected", { header: line });
+          } else if (line.startsWith('{')) {
+            const jsonMsg = JSON.parse(line);
+            debugLog("JSON-RPC", "Outgoing message", {
+              method: jsonMsg.method,
+              id: jsonMsg.id,
+              hasParams: Boolean(jsonMsg.params),
+              hasResult: Boolean(jsonMsg.result),
+              hasError: Boolean(jsonMsg.error)
+            });
+          }
+        }
+      } catch {
+        // Not JSON, ignore
+      }
+      
+      return originalStdoutWrite.call(process.stdout, chunk);
+    };
+    
+    // Log incoming messages (stdin)
+    process.stdin.on = function(event: string, listener: (...args: Array<unknown>) => void): NodeJS.ReadStream {
+      if (event === 'data') {
+        const wrappedListener = (data: Buffer): void => {
+          const dataStr = data.toString('utf8');
+          debugLog("STDIO", "⬅️ Received on stdin", {
+            preview: dataStr.substring(0, 500),
+            byteLength: data.length
+          });
+          
+          // Try to parse as JSON-RPC
+          try {
+            const lines = dataStr.split('\n').filter(line => line.trim());
+            for (const line of lines) {
+              if (line.includes('Content-Length:')) {
+                debugLog("PROTOCOL", "Header detected", { header: line });
+              } else if (line.startsWith('{')) {
+                const jsonMsg = JSON.parse(line);
+                debugLog("JSON-RPC", "Incoming message", {
+                  method: jsonMsg.method,
+                  id: jsonMsg.id,
+                  hasParams: Boolean(jsonMsg.params)
+                });
+              }
+            }
+          } catch {
+            // Not JSON, ignore
+          }
+          
+          listener(data);
+        };
+        return originalStdinOn(event, wrappedListener as (...args: Array<unknown>) => void);
+      }
+      return originalStdinOn(event, listener);
+    } as typeof process.stdin.on;
+    
+    debugLog("TRANSPORT", "Stdio interceptors installed");
+  }
+  
   await server.connect(transport);
+  debugLog("LIFECYCLE", "Server connected to transport");
   console.error("Plausible MCP Server running on stdio");
 }
 
